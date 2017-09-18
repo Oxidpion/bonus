@@ -1,0 +1,8 @@
+/.stack-work/
+/sqlite.db
+/sqlite.db-shm
+/sqlite.db-wal
+/.idea/
+/servant-bonus.iml
+/out/
+/cabal.config
