@@ -14,6 +14,7 @@ import Data.Aeson
 import Data.Text
 
 import Database.Persist.TH
+import Data.Time.Clock
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 User
@@ -21,6 +22,12 @@ User
   age  Int
   UniqueName name
   deriving Eq Read Show
+Account
+  name Text
+Transaction
+  accountId AccountId
+  date UTCTime
+  amount Int
 |]
 
 instance FromJSON User where
@@ -32,3 +39,10 @@ instance ToJSON User where
   toJSON (User name age) =
     object [ "name" .= name
            , "age"  .= age  ]
+
+instance FromJSON Account where
+  parseJSON = withObject "Account" $ \ o ->
+    Account <$> o .: "name"
+
+instance ToJSON Account where
+  toJSON (Account name) = object [ "name" .= name ]
