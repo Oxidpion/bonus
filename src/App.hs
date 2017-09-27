@@ -25,10 +25,11 @@ import           Data.Text
 
 import           Api
 import           Models
+import           Handler.Account (accountOperationH)
 
 server :: ConnectionPool -> Server Api
 server pool =
-  userAddH :<|> userGetH :<|> accountOperationH
+  userAddH :<|> userGetH :<|> accountOperationH pool
   where
     userAddH newUser = liftIO $ userAdd newUser
     userGetH name    = liftIO $ userGet name
@@ -44,22 +45,6 @@ server pool =
     userGet name = flip runSqlPersistMPool pool $ do
       mUser <- selectFirst [UserName ==. name] []
       return $ entityVal <$> mUser
-
-    accountOperationH accountId =
-      getAccountH accountId :<|> putAccountH accountId :<|> deleteAccountH accountId
-      where
-        getAccountH = liftIO . getAccount
-        putAccountH accountId body = liftIO (putAccount accountId body) >> return NoContent
-        deleteAccountH accountId = liftIO (deleteAccount accountId) >> return NoContent
-
-        getAccount :: AccountId -> IO (Maybe Account)
-        getAccount accountId = flip runSqlPersistMPool pool $ get accountId
-
-        putAccount :: AccountId -> Account -> IO ()
-        putAccount accountId account = flip runSqlPersistMPool pool $ repsert accountId account
-
-        deleteAccount :: AccountId -> IO ()
-        deleteAccount accountId = flip runSqlPersistMPool pool $ delete accountId
 
 app :: ConnectionPool -> Application
 app pool = serve api $ server pool

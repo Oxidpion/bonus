@@ -24,6 +24,7 @@ User
   deriving Eq Read Show
 Account
   name Text
+  deriving Eq Read Show
 Transaction
   accountId AccountId
   date UTCTime

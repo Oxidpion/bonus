@@ -15,6 +15,7 @@ executable servant-bonus
   other-modules:       Api
                      , App
                      , Models
+                     , Handler.Account
   build-depends:       base >=4.8 && <4.10
                      , aeson
                      , monad-logger
@@ -41,6 +42,7 @@ test-suite spec
                      , App
                      , Models
                      , AppSpec
+                     , Handler.Account
   build-depends:       base >=4.8 && <4.10
                      , hspec
                      , aeson
