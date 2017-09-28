@@ -16,15 +16,10 @@ import Models
 import Servant.API
 
 
-type AccountAPI =
+type Api =
        "account" :> Capture "id" AccountId :> Get '[JSON] (Maybe Account)
   :<|> "account" :> Capture "id" AccountId :> ReqBody '[JSON] Account :> Put '[JSON] NoContent
   :<|> "account" :> Capture "id" AccountId :> DeleteNoContent '[JSON] NoContent
-
-type Api =
-       "user" :> "add" :> ReqBody '[JSON] User :> Post '[JSON] (Maybe (Key User))
-  :<|> "user" :> "get" :> Capture "name" Text  :> Get  '[JSON] (Maybe User)
-  :<|> AccountAPI
 
 api :: Proxy Api
 api = Proxy

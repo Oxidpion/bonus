@@ -25,40 +25,15 @@ import           Servant.Client
 import           Test.Hspec
 import           Test.Mockery.Directory
 
-userAdd :: User -> ClientM (Maybe (Key User))
-userGet :: Text -> ClientM (Maybe User)
-
 getAccount :: AccountId -> ClientM (Maybe Account)
 putAccount :: AccountId -> Account -> ClientM NoContent
 delAccount :: AccountId -> ClientM NoContent
 
-(userAdd :<|> userGet :<|> getAccount :<|> putAccount :<|> delAccount) = client api
+(getAccount :<|> putAccount :<|> delAccount) = client api
 
 spec :: Spec
 spec = do
   around withApp $ do
-    describe "/user/get" $ do
-      it "returns Nothing for non-existing users" $ \ port -> do
-        try port (userGet "foo") `shouldReturn` Nothing
-
-    describe "/user/add" $ do
-      it "allows to add a user" $ \ port -> do
-        let user = User "Alice" 1
-        id <- try port (userAdd user)
-        try port (userGet "Alice") `shouldReturn` Just user
-
-      it "allows to add two users" $ \ port -> do
-        let a = User "Alice" 1
-        let b = User "Bob" 2
-        id <- try port (userAdd a)
-        id <- try port (userAdd b)
-        try port (userGet "Bob") `shouldReturn` Just b
-
-      it "returns Nothing when adding the same user twice" $ \ port -> do
-        let a = User "Alice" 1
-        id <- try port (userAdd a)
-        try port (userAdd a) `shouldReturn` Nothing
-
     describe "GET /account/:id" $ do
       it "returns Nothing for non-existing accounts" $ \ port -> do
         let keyAccount = AccountKey 0
@@ -72,16 +47,16 @@ spec = do
         try port (getAccount keyAccount) `shouldReturn` Just account
 
       it "allows to add two accounts" $ \ port -> do
-        let keyA = AccountKey 3
+        let keyA = AccountKey 1
         let a = Account {accountName = "Zephir"}
-        let keyB = AccountKey 4
+        let keyB = AccountKey 2
         let b = Account {accountName = "Bill"}
         try port (putAccount keyA a)
         try port (putAccount keyB b)
         try port (getAccount keyB) `shouldReturn` Just b
 
       it "allows to update a account" $ \ port -> do
-        let keyAccount = AccountKey 5
+        let keyAccount = AccountKey 1
         let account = Account {accountName = "Zephir"}
         let updateAccount = Account {accountName = "Zophit"}
         try port (putAccount keyAccount account)
@@ -94,7 +69,7 @@ spec = do
         try port (delAccount keyAccount) `shouldReturn` NoContent
 
       it "allows to delete a account" $ \ port -> do
-        let keyAccount = AccountKey 6
+        let keyAccount = AccountKey 1
         let account = Account {accountName = "Zephir"}
         try port (delAccount keyAccount) `shouldReturn` NoContent
         try port (getAccount keyAccount) `shouldReturn` Nothing

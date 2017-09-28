@@ -10,31 +10,32 @@ module Handler.Account
   ) where
 
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Reader
+
 import           Database.Persist.Sql
 import           Servant
 
 import           Models
 
-accountOperationH pool = getAccountH pool :<|> putAccountH pool :<|> deleteAccountH pool
+accountOperationH =
+       getAccountH
+  :<|> putAccountH
+  :<|> deleteAccountH
 
-getAccountH :: ConnectionPool -> AccountId -> Handler (Maybe Account)
-getAccountH pool =
-  liftIO . getAccount
-  where
-    getAccount :: AccountId -> IO (Maybe Account)
-    getAccount accountId = flip runSqlPersistMPool pool $ get accountId
+getAccountH :: AccountId -> ReaderT ConnectionPool Handler (Maybe Account)
+getAccountH accountId = do
+  pool <- ask
+  liftIO $ flip runSqlPersistMPool pool $ get accountId
 
-putAccountH :: ConnectionPool -> AccountId -> Account -> Handler NoContent
-putAccountH pool accountId body =
-  liftIO (putAccount accountId body) >> return NoContent
-  where
-    putAccount :: AccountId -> Account -> IO ()
-    putAccount accountId account = flip runSqlPersistMPool pool $ repsert accountId account
+putAccountH :: AccountId -> Account -> ReaderT ConnectionPool Handler NoContent
+putAccountH accountId account = do
+  pool <- ask
+  liftIO $ flip runSqlPersistMPool pool $ repsert accountId account
+  return NoContent
 
-deleteAccountH :: ConnectionPool -> AccountId -> Handler NoContent
-deleteAccountH pool accountId =
-  liftIO (deleteAccount accountId) >> return NoContent
-  where
-    deleteAccount :: AccountId -> IO ()
-    deleteAccount accountId = flip runSqlPersistMPool pool $ delete accountId
+deleteAccountH :: AccountId -> ReaderT ConnectionPool Handler NoContent
+deleteAccountH accountId = do
+  pool <- ask
+  liftIO $ flip runSqlPersistMPool pool $ delete accountId
+  return NoContent
 

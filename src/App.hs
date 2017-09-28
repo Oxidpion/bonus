@@ -8,6 +8,7 @@
 module App where
 
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Reader
 import           Control.Monad.Logger (runStderrLoggingT)
 
 import           Data.String.Conversions
@@ -28,23 +29,7 @@ import           Models
 import           Handler.Account (accountOperationH)
 
 server :: ConnectionPool -> Server Api
-server pool =
-  userAddH :<|> userGetH :<|> accountOperationH pool
-  where
-    userAddH newUser = liftIO $ userAdd newUser
-    userGetH name    = liftIO $ userGet name
-
-    userAdd :: User -> IO (Maybe (Key User))
-    userAdd newUser = flip runSqlPersistMPool pool $ do
-      exists <- selectFirst [UserName ==. (userName newUser)] []
-      case exists of
-        Nothing -> Just <$> insert newUser
-        Just _ -> return Nothing
-
-    userGet :: Text -> IO (Maybe User)
-    userGet name = flip runSqlPersistMPool pool $ do
-      mUser <- selectFirst [UserName ==. name] []
-      return $ entityVal <$> mUser
+server pool = Servant.enter (runReaderTNat pool :: ReaderT ConnectionPool Handler :~> Handler) accountOperationH
 
 app :: ConnectionPool -> Application
 app pool = serve api $ server pool

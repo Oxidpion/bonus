@@ -17,11 +17,6 @@ import Database.Persist.TH
 import Data.Time.Clock
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-User
-  name Text
-  age  Int
-  UniqueName name
-  deriving Eq Read Show
 Account
   name Text
   deriving Eq Read Show
@@ -30,16 +25,6 @@ Transaction
   date UTCTime
   amount Int
 |]
-
-instance FromJSON User where
-  parseJSON = withObject "User" $ \ v ->
-    User <$> v .: "name"
-         <*> v .: "age"
-
-instance ToJSON User where
-  toJSON (User name age) =
-    object [ "name" .= name
-           , "age"  .= age  ]
 
 instance FromJSON Account where
   parseJSON = withObject "Account" $ \ o ->
