@@ -7,6 +7,7 @@ module AppSpec where
 
 import           Api
 import           App
+import           Config
 
 import           Control.Exception (throwIO, ErrorCall(..))
 import           Control.Monad.Trans.Except
@@ -77,8 +78,9 @@ spec = do
 withApp :: (Int -> IO a) -> IO a
 withApp action =
   inTempDirectory $ do
-    app <- mkApp "sqlite.db"
-    testWithApplication (return app) action
+    app <- mkApp
+    runSqlPool (runMigration migrateAll) (appConnPool app)
+    testWithApplication (return $ warpApplication app) action
 
 try :: Int -> ClientM a -> IO a
 try port action = do

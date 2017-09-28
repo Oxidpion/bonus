@@ -15,6 +15,7 @@ executable servant-bonus
   other-modules:       Api
                      , App
                      , Models
+                     , Config
                      , Handler.Account
   build-depends:       base >=4.8 && <4.10
                      , aeson
@@ -41,6 +42,7 @@ test-suite spec
   other-modules:       Api
                      , App
                      , Models
+                     , Config
                      , AppSpec
                      , Handler.Account
   build-depends:       base >=4.8 && <4.10

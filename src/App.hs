@@ -7,41 +7,35 @@
 
 module App where
 
-import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Reader
-import           Control.Monad.Logger (runStderrLoggingT)
-
-import           Data.String.Conversions
-
-import           Database.Persist
-import           Database.Persist.Sql
 import           Database.Persist.Sqlite
-
-import           Network.Wai
 import           Network.Wai.Handler.Warp as Warp
-
 import           Servant
-
 import           Data.Text
 
 import           Api
 import           Models
+import           Config
 import           Handler.Account (accountOperationH)
 
-server :: ConnectionPool -> Server Api
-server pool = Servant.enter (runReaderTNat pool :: ReaderT ConnectionPool Handler :~> Handler) accountOperationH
+warpSettings :: App -> Settings
+warpSettings setting =
+    Warp.setPort (appPort $ appSettings setting)
+  $ Warp.setHost (appHost $ appSettings setting)
+    Warp.defaultSettings
 
-app :: ConnectionPool -> Application
-app pool = serve api $ server pool
+server :: App -> Server Api
+server app =
+  enter (convertType app) accountOperationH
+  where
+    convertType :: App -> ReaderT App Handler :~> Handler
+    convertType = runReaderTNat
 
-mkApp :: FilePath -> IO Application
-mkApp sqliteFile = do
-  pool <- runStderrLoggingT $ do
-    createSqlitePool (cs sqliteFile) 5
+warpApplication :: App -> Application
+warpApplication = serve api . server
 
-  runSqlPool (runMigration migrateAll) pool
-  return $ app pool
-
-run :: FilePath -> IO ()
-run sqliteFile =
-  Warp.run 3000 =<< mkApp sqliteFile
+run :: IO ()
+run = do
+  app <- mkApp
+  runSqlPool (runMigration migrateAll) (appConnPool app)
+  Warp.runSettings (warpSettings app) (warpApplication app)

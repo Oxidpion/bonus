@@ -9,33 +9,28 @@ module Handler.Account
   ( accountOperationH
   ) where
 
-import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Reader
 
 import           Database.Persist.Sql
 import           Servant
 
 import           Models
+import           Config
 
 accountOperationH =
-       getAccountH
-  :<|> putAccountH
-  :<|> deleteAccountH
+  getAccountH :<|> putAccountH :<|> deleteAccountH
 
-getAccountH :: AccountId -> ReaderT ConnectionPool Handler (Maybe Account)
+getAccountH :: AccountId -> ReaderT App Handler (Maybe Account)
 getAccountH accountId = do
-  pool <- ask
-  liftIO $ flip runSqlPersistMPool pool $ get accountId
+  runDB $ get accountId
 
-putAccountH :: AccountId -> Account -> ReaderT ConnectionPool Handler NoContent
+putAccountH :: AccountId -> Account -> ReaderT App Handler NoContent
 putAccountH accountId account = do
-  pool <- ask
-  liftIO $ flip runSqlPersistMPool pool $ repsert accountId account
+  runDB $ repsert accountId account
   return NoContent
 
-deleteAccountH :: AccountId -> ReaderT ConnectionPool Handler NoContent
+deleteAccountH :: AccountId -> ReaderT App Handler NoContent
 deleteAccountH accountId = do
-  pool <- ask
-  liftIO $ flip runSqlPersistMPool pool $ delete accountId
+  runDB $ delete accountId
   return NoContent
 

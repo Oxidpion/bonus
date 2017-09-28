@@ -10,11 +10,22 @@
 
 module Models where
 
-import Data.Aeson
-import Data.Text
+import           Control.Monad.Trans.Reader
+import           Control.Monad.IO.Class
 
-import Database.Persist.TH
-import Data.Time.Clock
+import           Data.Aeson
+import           Data.Text
+
+import           Database.Persist.Sql
+import           Database.Persist.TH
+
+import           Data.Time.Clock
+import           Config
+
+runDB :: (MonadIO m) => SqlPersistT IO b -> ReaderT App m b
+runDB query = do
+  pool <- asks appConnPool
+  liftIO $ runSqlPool query pool
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Account

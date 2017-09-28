@@ -9,8 +9,6 @@ module Api (api, Api) where
 import Data.Proxy
 import Data.Text
 
-import Database.Persist
-
 import Models
 
 import Servant.API
