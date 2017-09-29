@@ -8,6 +8,7 @@ module AppSpec where
 import           Api
 import           App
 import           Config
+import           Handler.Account
 
 import           Control.Exception (throwIO, ErrorCall(..))
 import           Control.Monad.Trans.Except
@@ -29,8 +30,11 @@ import           Test.Mockery.Directory
 getAccount :: AccountId -> ClientM (Maybe Account)
 putAccount :: AccountId -> Account -> ClientM NoContent
 delAccount :: AccountId -> ClientM NoContent
+balanceAccount :: AccountId -> ClientM Balance
+incomeAccount :: AccountId -> Income -> ClientM (Maybe Transaction)
+expenseAccount :: AccountId -> Expense -> ClientM (Maybe Transaction)
 
-(getAccount :<|> putAccount :<|> delAccount) = client api
+(getAccount :<|> putAccount :<|> delAccount :<|> balanceAccount :<|> incomeAccount :<|> expenseAccount) = client api
 
 spec :: Spec
 spec = do

@@ -7,6 +7,7 @@
 {-# LANGUAGE QuasiQuotes                #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE RecordWildCards            #-}
 
 module Models where
 
@@ -34,7 +35,7 @@ Account
 Transaction
   accountId AccountId
   date UTCTime
-  amount Int
+  change Int
 |]
 
 instance FromJSON Account where
@@ -43,3 +44,16 @@ instance FromJSON Account where
 
 instance ToJSON Account where
   toJSON (Account name) = object [ "name" .= name ]
+
+instance ToJSON Transaction where
+  toJSON t = object
+    [ "date"    .= transactionDate t
+    , "change"  .= transactionChange t
+    ]
+
+instance FromJSON Transaction where
+  parseJSON = withObject "Transaction" $ \o -> do
+    transactionDate       <- o .: "date"
+    transactionChange     <- o .: "change"
+    let transactionAccountId = AccountKey 0
+    return Transaction {..}
