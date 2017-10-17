@@ -9,8 +9,11 @@
 module Handler.Account
   ( accountOperationH
   , Balance
+  , balance
   , Income
+  , income
   , Expense
+  , expense
   ) where
 
 import           Data.Aeson
@@ -18,6 +21,7 @@ import           Data.Time.Clock
 import           Data.Maybe
 import           Control.Monad.Trans.Reader
 import           Control.Monad.IO.Class
+import           Control.Monad (when)
 
 import           Database.Persist.Sql
 import           Servant
@@ -28,9 +32,10 @@ import           Config
 accountOperationH =
   getAccountH :<|> putAccountH :<|> deleteAccountH :<|> balanceAccountH :<|> incomeAccountH :<|> expenseAccountH
 
-getAccountH :: AccountId -> ReaderT App Handler (Maybe Account)
+getAccountH :: AccountId -> ReaderT App Handler Account
 getAccountH accountId = do
-  runDB $ get accountId
+  maybeAccount <- runDB $ get accountId
+  maybe (throwError $ err404 { errBody = "Account not found" }) return maybeAccount
 
 putAccountH :: AccountId -> Account -> ReaderT App Handler NoContent
 putAccountH accountId account = do
@@ -43,7 +48,10 @@ deleteAccountH accountId = do
   return NoContent
 
 
-newtype Balance = Balance Int
+newtype Balance = Balance Int deriving (Eq, Show)
+
+balance :: Int -> Balance
+balance = Balance
 
 instance ToJSON Balance where
   toJSON (Balance x) = object ["balance" .= x ]
@@ -54,13 +62,10 @@ instance FromJSON Balance where
 
 balanceAccountH :: AccountId -> ReaderT App Handler Balance
 balanceAccountH accountId = do
-  account <- runDB $ get accountId
-  case account of
-    (Just _) -> do
-      let sql = "SELECT SUM(change) as balance FROM \"transaction\" WHERE account_id = ? GROUP BY account_id"
-      bonuses <- runDB $ rawSql sql [toPersistValue accountId]
-      return $ Balance $ maybe 0 unSingle (listToMaybe bonuses)
-    Nothing -> return $ Balance 0
+  account <- getAccountH accountId
+  let sql = "SELECT SUM(change) as balance FROM \"transaction\" WHERE account_id = ? GROUP BY account_id"
+  bonuses <- runDB $ rawSql sql [toPersistValue accountId]
+  return $ Balance $ maybe 0 unSingle (listToMaybe bonuses)
 
 class ToTransaction a where
     toTransaction :: AccountId -> a -> IO Transaction
@@ -68,6 +73,12 @@ class ToTransaction a where
 data Income = Income
   { incomeDeferredSecond :: Int
   , incomeChange :: Int
+  }
+
+income :: Int -> Int -> Income
+income deferredSeconds change = Income
+  { incomeDeferredSecond = deferredSeconds
+  , incomeChange = change
   }
 
 instance ToJSON Income where
@@ -84,7 +95,6 @@ instance FromJSON Income where
 
 instance ToTransaction Income where
   toTransaction accountId (Income s c) = do
-    let True = c > 0
     time <- getCurrentTime
     return Transaction
       { transactionAccountId  = accountId
@@ -92,20 +102,24 @@ instance ToTransaction Income where
       , transactionDate       = addUTCTime (realToFrac s) time
       }
 
-incomeAccountH :: AccountId -> Income -> ReaderT App Handler (Maybe Transaction)
+incomeAccountH :: AccountId -> Income -> ReaderT App Handler Transaction
 incomeAccountH accountId income = do
-  account <- runDB $ get accountId
+  when (incomeChange income < 0) (throwError $ err400 { errBody = "Change will be >0" })
+  account <- getAccountH accountId
   transaction <- liftIO $ toTransaction accountId income
-  case account of
-    (Just _) -> do
-      runDB $ insert transaction
-      return $ Just transaction
-    Nothing -> return Nothing
+  runDB $ insert transaction
+  return transaction
 
 
 data Expense = Expense
   { expenseDeferredSecond :: Int
   , expenseChange :: Int
+  }
+
+expense :: Int -> Int -> Expense
+expense deferredSecond change = Expense
+  { expenseDeferredSecond = deferredSecond
+  , expenseChange = change
   }
 
 instance ToJSON Expense where
@@ -122,7 +136,6 @@ instance FromJSON Expense where
 
 instance ToTransaction Expense where
   toTransaction accountId (Expense s c) = do
-    let True = c > 0
     time <- getCurrentTime
     return Transaction
       { transactionAccountId  = accountId
@@ -130,12 +143,10 @@ instance ToTransaction Expense where
       , transactionDate       = addUTCTime (realToFrac s) time
       }
 
-expenseAccountH :: AccountId -> Expense -> ReaderT App Handler (Maybe Transaction)
+expenseAccountH :: AccountId -> Expense -> ReaderT App Handler Transaction
 expenseAccountH accountId expense = do
-  account <- runDB $ get accountId
+  when (expenseChange expense < 0) (throwError $ err400 { errBody = "Change will be >0" } )
+  account <- getAccountH accountId
   transaction <- liftIO $ toTransaction accountId expense
-  case account of
-    (Just _) -> do
-      runDB $ insert transaction
-      return $ Just transaction
-    Nothing -> return Nothing
+  runDB $ insert transaction
+  return transaction
